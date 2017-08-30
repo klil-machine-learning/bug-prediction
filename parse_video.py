@@ -93,14 +93,14 @@ prev_frame = np.zeros((480,852))
 count = 0
 playVideo = True
 while(cap.isOpened()):
-    # if playVideo:
-    ret, frame = cap.read()
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    if playVideo:
+        ret, frame = cap.read()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # print (type(gray[0,0]))
-    out_frame = (128 + (gray/2)) - (prev_frame/2)
-    thres = 140
-    out_frame[out_frame > thres] = 255
-    out_frame[out_frame <= thres] = 0
+        out_frame = (128 + (gray/2)) - (prev_frame/2)
+        thres = 140
+        out_frame[out_frame > thres] = 255
+        out_frame[out_frame <= thres] = 0
     # out_frame[out_frame > 140] = 255
     # out_frame[out_frame < 120] = 255
     # out_frame[out_frame != 255] = 0
@@ -112,24 +112,25 @@ while(cap.isOpened()):
     # im2,contours,hierarchy = cv2.findContours(out_frame, 1, 2)
     # cnt = contours[0]
     # print(cnt)
-    y, x = np.nonzero(out_frame)
-    x_mean = np.mean(x)
-    y_mean = np.mean(y)
-    x1,y1,x2,y2 = lin_reg(out_frame)
-    cv2.line(out_frame, (x1,y1), (x2,y2), 255)
-    x1, y1, x2, y2 = myPCA(out_frame)
-    cv2.line(out_frame, (x1,y1), (x2,y2), 255)
+        y, x = np.nonzero(out_frame)
+        x_mean = np.mean(x)
+        y_mean = np.mean(y)
+    # x1,y1,x2,y2 = lin_reg(out_frame)
+    # cv2.line(out_frame, (x1,y1), (x2,y2), 255)
+        x1, y1, x2, y2 = myPCA(out_frame)
+        cv2.line(out_frame, (x1,y1), (x2,y2), 255)
     
-    cv2.circle(out_frame, (int(x_mean), int(y_mean)), 40, 255)
-    cv2.imshow('frame',out_frame.astype(np.uint8))
-    prev_frame = gray
+        cv2.circle(out_frame, (int(x_mean), int(y_mean)), 40, 255)
+        cv2.imshow('frame',out_frame.astype(np.uint8))
+        prev_frame = gray
     # print(np.max(out_frame), np.min(out_frame), np.mean(out_frame))
-    count+=1
+        count+=1
     # time.sleep(0.1)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    char = cv2.waitKey(1)
+    if char == ord('q'):
         break
-    if cv2.waitKey(1) & 0xFF == ord('p'):
+    elif char == ord('p'):
         playVideo = not playVideo
 
 cap.release()
