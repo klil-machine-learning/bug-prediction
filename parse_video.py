@@ -71,20 +71,49 @@ def moments(img):
 
 def lin_reg(img):
     y, x = np.nonzero(img)
+    x_diff = x.max() - x.min()
+    y_diff = y.max() - y.min()
+
+    transposed = False
+    if (y_diff > x_diff):
+        transposed = True
+        temp = x
+        x = y
+        y = temp
+
     x_mean = np.mean(x)
     y_mean = np.mean(y)
-    x = x - x_mean
-    y = y - y_mean
-    x[np.abs(x)>40] = 0
-    y[np.abs(y)>40] = 0
-    a,b = np.polyfit(x,y,1)
-    theta = np.tan(a)
+
     scale = 80
-    x1 = scale*np.sin(theta) + x_mean
-    y1 = scale*np.cos(theta) + y_mean
-    x2 = -scale*np.sin(theta) + x_mean
-    y2 = -scale*np.cos(theta) + y_mean
+    a,b = np.polyfit(x,y,1)
+    print("a {} b {}".format(a, b))
+    x1 = x_mean - scale
+    y1 = x1 * a + b
+    x2 = x_mean + scale
+    y2 = x2 * a + b
+
+    if (transposed):
+        temp = x1
+        x1 = y1
+        y1 = temp
+        temp = x2
+        x2 = y2
+        y2 = temp
     return int(x1),int(y1),int(x2),int(y2)
+
+def diff_gray(image, prev_image):
+    result = (128 + (image / 2)) - (prev_image / 2)
+    delta = 16
+    result[result > 128 + delta] = 255
+    result[result <= 128 - delta] = 255
+    result[result != 255] = 0
+    return result
+
+mask = np.zeros((480,852))
+# mask.fill(0)
+# cv2.rectangle(mask, box_corner1, box_corner2, 255, -1)
+# empty[mask == 0] = (0, 0, 0)
+# empty_gray[mask == 0] = 0
 
 cap = cv2.VideoCapture('330 minute 1.mp4')
 
@@ -92,35 +121,24 @@ detector = cv2.SimpleBlobDetector_create()
 prev_frame = np.zeros((480,852))
 count = 0
 playVideo = True
+step = False
 while(cap.isOpened()):
-    if playVideo:
+    if playVideo or step:
+        step = False
         ret, frame = cap.read()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # print (type(gray[0,0]))
-        out_frame = (128 + (gray/2)) - (prev_frame/2)
-        thres = 140
-        out_frame[out_frame > thres] = 255
-        out_frame[out_frame <= thres] = 0
-    # out_frame[out_frame > 140] = 255
-    # out_frame[out_frame < 120] = 255
-    # out_frame[out_frame != 255] = 0
-    # keypoints = detector.detect(out_frame.astype(np.uint8))
-    # print(keypoints)
-    # x1, y1, x2, y2 = moments(out_frame)
-    # cv2.line(out_frame, (x1,y1), (x2,y2), 255)
-    
-    # im2,contours,hierarchy = cv2.findContours(out_frame, 1, 2)
-    # cnt = contours[0]
-    # print(cnt)
-        y, x = np.nonzero(out_frame)
-        x_mean = np.mean(x)
-        y_mean = np.mean(y)
-    # x1,y1,x2,y2 = lin_reg(out_frame)
-    # cv2.line(out_frame, (x1,y1), (x2,y2), 255)
-        x1, y1, x2, y2 = myPCA(out_frame)
+        out_frame = np.copy(gray)
+        mask = diff_gray(gray, prev_frame)
+
+        # mask out anything not the bug (prev / current) frame
+        out_frame[mask == 0] = 0
+        # clean "prev" frame location
+        out_frame[out_frame > 170] = 0
+        out_frame[out_frame != 0] = 255
+
+        x1,y1,x2,y2 = lin_reg(out_frame)
         cv2.line(out_frame, (x1,y1), (x2,y2), 255)
-    
-        cv2.circle(out_frame, (int(x_mean), int(y_mean)), 40, 255)
+
         cv2.imshow('frame',out_frame.astype(np.uint8))
         prev_frame = gray
     # print(np.max(out_frame), np.min(out_frame), np.mean(out_frame))
@@ -130,6 +148,8 @@ while(cap.isOpened()):
     char = cv2.waitKey(1)
     if char == ord('q'):
         break
+    elif char == ord('n'):
+        step = True
     elif char == ord('p'):
         playVideo = not playVideo
 
