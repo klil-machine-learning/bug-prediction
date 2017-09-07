@@ -86,7 +86,6 @@ def lin_reg(img):
 
     scale = 80
     a,b = np.polyfit(x,y,1)
-    print("a {} b {}".format(a, b))
     x1 = x_mean - scale
     y1 = x1 * a + b
     x2 = x_mean + scale
@@ -122,10 +121,25 @@ prev_frame = np.zeros((480,852))
 count = 0
 playVideo = True
 step = False
+
+ksize = (5, 5)
+sigmaX = 1
+threshold = 200
+
+bg = cv2.imread("background.png")
+
 while(cap.isOpened()):
     if playVideo or step:
         step = False
         ret, frame = cap.read()
+
+        # Udacity image processing. produces good bug shape but with alot of reflective noise
+        img = frame.astype(np.float)
+        img = cv2.GaussianBlur(img, ksize, sigmaX)
+        img = cv2.normalize(img - bg, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # prepare mask which is diff between current and previous frame
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         out_frame = np.copy(gray)
         mask = diff_gray(gray, prev_frame)
@@ -133,17 +147,34 @@ while(cap.isOpened()):
         # mask out anything not the bug (prev / current) frame
         out_frame[mask == 0] = 0
         # clean "prev" frame location
-        out_frame[out_frame > 170] = 0
+        # out_frame[out_frame > 170] = 0
+        # out_frame[out_frame != 0] = 255
+
+        # AND our implementation and udacity result to get best of both
+        out_frame = np.bitwise_and(out_frame,img)
         out_frame[out_frame != 0] = 255
+        out_frame = cv2.erode(out_frame, (10,10))
+        out_frame = cv2.erode(out_frame, (10,10))
+        # x1,y1,x2,y2 = lin_reg(out_frame)
+        # cv2.line(out_frame, (x1,y1), (x2,y2), 255)
 
-        x1,y1,x2,y2 = lin_reg(out_frame)
-        cv2.line(out_frame, (x1,y1), (x2,y2), 255)
+        # convex Hull magic to get bounding box of the bug
+        ret, thresh = cv2.threshold(out_frame, 127, 255, 0)
+        im2, contours, heirarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        y, x = np.nonzero(out_frame)
+        coords = np.vstack([x, y])
+        nonZero = cv2.findNonZero(out_frame)
 
-        cv2.imshow('frame',out_frame.astype(np.uint8))
+        hull = cv2.convexHull(nonZero)
+
+        rect = cv2.minAreaRect(hull)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        cv2.drawContours(frame, [box], 0, 255, 2)
+
+        cv2.imshow('frame',frame.astype(np.uint8))
         prev_frame = gray
-    # print(np.max(out_frame), np.min(out_frame), np.mean(out_frame))
         count+=1
-    # time.sleep(0.1)
 
     char = cv2.waitKey(1)
     if char == ord('q'):
