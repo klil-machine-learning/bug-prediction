@@ -127,6 +127,20 @@ def extract_abc(box):
     B = np.mean([box[0], box[1]], axis=0)
     return A,B,C
 
+box_corner1 = (125, 16)
+box_corner2 = (728, 452)
+box_center = (433, 236)
+box_center_radius = 72
+
+def wall_distances(point):
+    dist1 = point[0] - box_corner1[0]
+    dist2 = point[1] - box_corner1[1]
+    dist3 = box_corner2[0] - point[0]
+    dist4 = box_corner2[1] - point[1]
+    dist5 = np.linalg.norm(point - box_center) - box_center_radius
+    return [dist1, dist2, dist3, dist4, dist5]
+
+
 mask = np.zeros((480,852))
 # mask.fill(0)
 # cv2.rectangle(mask, box_corner1, box_corner2, 255, -1)
@@ -138,9 +152,10 @@ cap = cv2.VideoCapture("videos/"+base_filename+".mp4")
 
 detector = cv2.SimpleBlobDetector_create()
 prev_frame = np.zeros((480,852))
+mask = np.zeros(prev_frame.shape)
 count = 0
 playVideo = True
-step = False
+step = True
 
 ksize = (5, 5)
 sigmaX = 1
@@ -149,11 +164,17 @@ threshold = 200
 bg = cv2.imread("background.png")
 
 features_filename = open("features/"+base_filename+'_features.csv', 'w')
-features_filename.write("frame number,point1_x,point1_y,point2_x,point2_y,point3_x,point3_y,point4_x,point4_y,\n")
-debug = True
+features_filename.write("frame number,point1_x,point1_y,point2_x,point2_y,point3_x,point3_y,point4_x,point4_y,"\
+                        "A_x,A_y,B_x,B_y,C_x,C_y,dist_A_left,dist_A_top,dist_A_right,dist_A_bottom,dist_A_center,"\
+                        "dist_B_left,dist_B_top,dist_B_right,dist_B_bottom,dist_B_center\n")
+debug = False
 
 prev_A = [0, 0]
 prev_B = [0, 0]
+
+ret, frame = cap.read()
+count += 1
+prev_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 while(cap.isOpened()):
     if playVideo or step:
@@ -176,6 +197,12 @@ while(cap.isOpened()):
         # clean "prev" frame location
         # out_frame[out_frame > 170] = 0
         # out_frame[out_frame != 0] = 255
+        y, x = np.nonzero(out_frame)
+        x_mean = np.mean(x)
+        y_mean = np.mean(y)
+        mask[:] = 0
+        cv2.circle(mask, (int(x_mean), int(y_mean)), 45, 255, thickness=-1)
+        out_frame[mask == 0] = 0
 
         # AND our implementation and udacity result to get best of both
         out_frame = np.bitwise_and(out_frame,img)
@@ -204,9 +231,10 @@ while(cap.isOpened()):
         if debug:
             cv2.drawContours(frame, [box], 0, 255, 2)
 
-        coordinates = ""
+        params = [count]
         for point in box:
-            coordinates += "{}, {},".format(point[0],point[1])
+            params.append(point[0])
+            params.append(point[1])
 
         A,B,C = extract_abc(box)
 
@@ -215,11 +243,23 @@ while(cap.isOpened()):
         if (distance_A > distance_B):
             A,B = B,A
 
-        # features_filename.write("{},{},{},{},{}\n".format(count, coordinates), center, A, B)
+        distances_A = wall_distances(A)
+        distances_B = wall_distances(B)
 
+        params = params + [A[0], A[1], B[0], B[1], C[0], C[1]]
+        params = params + distances_A + distances_B
+        params = [str(x) for x in params]
+        line = ",".join(params)
+
+        # print(line)
+        features_filename.write(line+"\n")
         cv2.circle(frame, (int(C[0]), int(C[1])), 5, (255, 0, 0), thickness=-1)
         cv2.circle(frame, (int(A[0]), int(A[1])), 5, (0, 255, 0), thickness=-1)
         cv2.circle(frame, (int(B[0]), int(B[1])), 5, (0, 0, 255), thickness=-1)
+
+        # cv2.rectangle(frame, box_corner1, box_corner2, (255, 255, 0))
+        # cv2.circle(frame, box_center, box_center_radius, (255, 255, 0))
+
         if debug:
             cv2.imshow('frame', frame.astype(np.uint8))
         else:
