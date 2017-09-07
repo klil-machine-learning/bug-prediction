@@ -108,13 +108,33 @@ def diff_gray(image, prev_image):
     result[result != 255] = 0
     return result
 
+def extract_abc(box):
+    C = np.mean(box, axis=0)
+    point1 = box[0]
+    closest_index = -1
+    closest_distance = 99999
+    for i in range(1, 4):
+        distance = np.linalg.norm(point1 - box[i])
+        if distance < closest_distance:
+            closest_distance = distance
+            closest_index = i
+
+    point2 = box[closest_index]
+    A = np.mean([point1, point2], axis=0)
+
+    box = np.delete(box, (closest_index), axis=0)
+    box = np.delete(box, (0), axis=0)
+    B = np.mean([box[0], box[1]], axis=0)
+    return A,B,C
+
 mask = np.zeros((480,852))
 # mask.fill(0)
 # cv2.rectangle(mask, box_corner1, box_corner2, 255, -1)
 # empty[mask == 0] = (0, 0, 0)
 # empty_gray[mask == 0] = 0
 
-cap = cv2.VideoCapture('330 minute 1.mp4')
+base_filename = "330 minute 1"
+cap = cv2.VideoCapture("videos/"+base_filename+".mp4")
 
 detector = cv2.SimpleBlobDetector_create()
 prev_frame = np.zeros((480,852))
@@ -127,6 +147,13 @@ sigmaX = 1
 threshold = 200
 
 bg = cv2.imread("background.png")
+
+features_filename = open("features/"+base_filename+'_features.csv', 'w')
+features_filename.write("frame number,point1_x,point1_y,point2_x,point2_y,point3_x,point3_y,point4_x,point4_y,\n")
+debug = True
+
+prev_A = [0, 0]
+prev_B = [0, 0]
 
 while(cap.isOpened()):
     if playVideo or step:
@@ -163,17 +190,45 @@ while(cap.isOpened()):
         im2, contours, heirarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         y, x = np.nonzero(out_frame)
         coords = np.vstack([x, y])
-        nonZero = cv2.findNonZero(out_frame)
+        try:
+            nonZero = cv2.findNonZero(out_frame)
 
-        hull = cv2.convexHull(nonZero)
+            hull = cv2.convexHull(nonZero)
 
-        rect = cv2.minAreaRect(hull)
-        box = cv2.boxPoints(rect)
-        box = np.int0(box)
-        cv2.drawContours(frame, [box], 0, 255, 2)
+            rect = cv2.minAreaRect(hull)
+            box = cv2.boxPoints(rect)
+            box = np.int0(box)
+        except:
+            print("error in frame {}".format(count))
 
-        cv2.imshow('frame',frame.astype(np.uint8))
+        if debug:
+            cv2.drawContours(frame, [box], 0, 255, 2)
+
+        coordinates = ""
+        for point in box:
+            coordinates += "{}, {},".format(point[0],point[1])
+
+        A,B,C = extract_abc(box)
+
+        distance_A = np.linalg.norm(A - prev_A)
+        distance_B = np.linalg.norm(A - prev_B)
+        if (distance_A > distance_B):
+            A,B = B,A
+
+        # features_filename.write("{},{},{},{},{}\n".format(count, coordinates), center, A, B)
+
+        cv2.circle(frame, (int(C[0]), int(C[1])), 5, (255, 0, 0), thickness=-1)
+        cv2.circle(frame, (int(A[0]), int(A[1])), 5, (0, 255, 0), thickness=-1)
+        cv2.circle(frame, (int(B[0]), int(B[1])), 5, (0, 0, 255), thickness=-1)
+        if debug:
+            cv2.imshow('frame', frame.astype(np.uint8))
+        else:
+            if count % 100 == 0:
+                print(count)
+
         prev_frame = gray
+        prev_A = A
+        prev_B = B
         count+=1
 
     char = cv2.waitKey(1)
@@ -187,3 +242,4 @@ while(cap.isOpened()):
 cap.release()
 cv2.destroyAllWindows()
 
+features_filename.close()
