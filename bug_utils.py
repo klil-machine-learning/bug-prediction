@@ -91,6 +91,7 @@ def split_all_videos(n_train_frames, n_label_frames,
     label_index = pd.MultiIndex.from_product([range(n_label_frames), label_features])
     label_df = pd.DataFrame(label_all, columns=label_index)
 
+    print("train_df {} label_df {}".format(train_df.shape, label_df.shape))
     return train_df, label_df
 
 
@@ -123,6 +124,7 @@ def split_all_videos_random(num_items, n_train_frames, n_label_frames,
     label_index = pd.MultiIndex.from_product([range(n_label_frames), label_features])
     label_df = pd.DataFrame(label_all, columns=label_index)
 
+    print("train_df {} label_df {}".format(train_df.shape, label_df.shape))
     return train_df, label_df
 
 
