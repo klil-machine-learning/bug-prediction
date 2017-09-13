@@ -62,7 +62,7 @@ def fetch_one_sample(df, ind, n_train_frames, n_label_frames, train_features, la
 
 def split_all_videos(n_train_frames, n_label_frames,
                      train_features = ['C_x', 'C_y'],
-                     label_features = ['C_x', 'C_y']):
+                     label_features = ['C_x', 'C_y'], debug=True):
     train_all = None
     label_all = None
     for filename in os.listdir('features'):
@@ -91,13 +91,14 @@ def split_all_videos(n_train_frames, n_label_frames,
     label_index = pd.MultiIndex.from_product([range(n_label_frames), label_features])
     label_df = pd.DataFrame(label_all, columns=label_index)
 
-    print("train_df {} label_df {}".format(train_df.shape, label_df.shape))
+    if debug:
+        print("train_df {} label_df {}".format(train_df.shape, label_df.shape))
     return train_df, label_df
 
 
 def split_all_videos_random(num_items, n_train_frames, n_label_frames,
                             train_features = ['C_x', 'C_y'],
-                            label_features = ['C_x', 'C_y']):
+                            label_features = ['C_x', 'C_y'], debug=True):
     train_all = None
     label_all = None
     dfs = []
@@ -124,7 +125,8 @@ def split_all_videos_random(num_items, n_train_frames, n_label_frames,
     label_index = pd.MultiIndex.from_product([range(n_label_frames), label_features])
     label_df = pd.DataFrame(label_all, columns=label_index)
 
-    print("train_df {} label_df {}".format(train_df.shape, label_df.shape))
+    if debug:
+        print("train_df {} label_df {}".format(train_df.shape, label_df.shape))
     return train_df, label_df
 
 
