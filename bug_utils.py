@@ -33,6 +33,7 @@ def show_sample(train, label, ind=0):
     plt.gca().plot([125, 728, 728, 125, 125],[16, 16, 452, 452, 16], 'k-')
     # plot mid circle
     plt.gca().add_patch(plt.Circle((433,236),72,color='k', fill=False))
+    plt.show()
 
 
 def show_pred(train, label, preds, ind=0):
