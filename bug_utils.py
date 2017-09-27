@@ -5,6 +5,7 @@ import os
 import random
 import matplotlib.pyplot as plt
 from matplotlib import patches
+from sklearn.model_selection import train_test_split
 import time
 import tensorflow as tf
 
@@ -51,7 +52,6 @@ def nn_run(layer_sizes, X_train, X_test, y_train, y_test, epochs=1500, debug=Fal
     return sess.run(cost, feed_dict={X: X_test, y: y_test})
 
 def multi_run(prms_dic, debug=False):
-    # create data samples
     prms_dic["rmse_results"] = np.zeros((len(prms_dic["n_trains"]), 
                                          len(prms_dic["n_labels"]), 
                                          len(prms_dic["models"])))
@@ -61,26 +61,50 @@ def multi_run(prms_dic, debug=False):
     for i1, n_train in enumerate(prms_dic["n_trains"]):
         for i2, n_label in enumerate(prms_dic["n_labels"]):
             if prms_dic["data_sampler"] == "random":
-                train_all, label_all = bug.split_all_videos_random(5000, n_train, n_label, 
+                train_all, label_all = split_all_videos_random(prms_dic["n_samples"], n_train, n_label, 
                                                                    prms_dic["train_features"], 
                                                                    prms_dic["label_features"], 
                                                                    debug=debug)
             if prms_dic["data_sampler"] == "ordered":
-                train_all, label_all = bug.split_all_videos(n_train, n_label, 
+                train_all, label_all = split_all_videos(n_train, n_label, 
                                                             prms_dic["train_features"], 
                                                             prms_dic["label_features"], 
                                                             debug=debug)
+                prms_dic["n_samples"] = len(train_all)
             for i3, model in enumerate(prms_dic["models"]):
                 X_train, X_test, y_train, y_test = train_test_split(train_all, label_all, test_size=0.2)
     #             print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
                 if model == "nn":
                     score = nn_run(prms_dic["fc_nn_sizes"], X_test, X_test, y_train, y_test, debug=debug)
                 _, score = regressor(model, X_train, y_train, X_test, y_test, debug=debug)
-                print(score.mean())
+                # summarize results
+                print("score: {}, model: {}, n_samples: {}, n_train: {}, n_label: {}".format(
+                    score.mean(), type(model).__name__, prms_dic["n_samples"], n_train, n_label))
 #                 prms_dic["score_df"][i1, i2, i3] = score
                 prms_dic["rmse_results"][i1, i2, i3] = score.mean()
     return prms_dic
-    
+
+def single_run(prms_dic, debug=False):
+    if prms_dic["data_sampler"] == "random":
+        train_all, label_all = split_all_videos_random(prms_dic["n_samples"], prms_dic["n_trains"], prms_dic["n_labels"], 
+                                                           prms_dic["train_features"], 
+                                                           prms_dic["label_features"], 
+                                                           debug=debug)
+    if prms_dic["data_sampler"] == "ordered":
+        train_all, label_all = split_all_videos(prms_dic["n_trains"], prms_dic["n_labels"], 
+                                                    prms_dic["train_features"], 
+                                                    prms_dic["label_features"], 
+                                                    debug=debug)
+        prms_dic["n_samples"] = len(train_all)
+    X_train, X_test, y_train, y_test = train_test_split(train_all, label_all, test_size=0.2)
+#             print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
+    model, score = regressor(prms_dic["models"], X_train, y_train, X_test, y_test, debug=debug)
+    # summarize results
+    print("score: {}, model: {}, n_samples: {}, n_train: {}, n_label: {}".format(
+        score.mean(), type(model).__name__, prms_dic["n_samples"], prms_dic["n_trains"], prms_dic["n_labels"]))
+#                 prms_dic["score_df"][i1, i2, i3] = score
+    prms_dic["rmse_results"] = score.mean()
+    return model, prms_dic
 
 def show_video_trajectory(video_file):
     df = pd.read_csv("features/" + video_file)
@@ -146,9 +170,9 @@ def split_all_videos(n_train_frames, n_label_frames,
             df = pd.read_csv("features/" + filename)
             df = df.reset_index(drop=True)
             total_len = n_train_frames + n_label_frames
-            len = df.shape[0]
+            length = df.shape[0]
             index = 0
-            while index + total_len < len:
+            while index + total_len < length:
                 train, label = fetch_one_sample(df, index, n_train_frames, n_label_frames, train_features,
                                                 label_features)
                 if train_all is None:
