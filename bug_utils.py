@@ -5,6 +5,20 @@ import os
 import random
 import matplotlib.pyplot as plt
 from matplotlib import patches
+import time
+
+def rmse(preds, y):
+    return np.sqrt(np.mean((preds-y)**2))
+
+def regressor(model, X, y, X_test, y_test, debug=True):
+    t0 = time.time()
+    model.fit(X, y)
+    score = rmse(model.predict(X), y)
+    test_score = rmse(model.predict(X_test), y_test)
+    t1 = time.time()
+    if debug:
+        print("Model trained ({} seconds). \nTrain score: {}, test score: {}".format(t1-t0, score, test_score))
+    return model, test_score
 
 
 def show_video_trajectory(video_file):
