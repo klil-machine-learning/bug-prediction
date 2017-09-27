@@ -6,6 +6,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib import patches
 import time
+import tensorflow as tf
 
 def rmse(preds, y):
     return np.sqrt(np.mean((preds-y)**2))
@@ -20,6 +21,34 @@ def regressor(model, X, y, X_test, y_test, debug=True):
         print("Model trained ({} seconds). \nTrain score: {}, test score: {}".format(t1-t0, score, test_score))
     return model, test_score
 
+
+def nn_run(layer_sizes, X_train, X_test, y_train, y_test, epochs=1500, debug=False):
+    num_input_params = X_train.shape[1]
+    num_output_params = y_train.shape[1]
+
+    X = tf.placeholder(tf.float32, shape=[None, num_input_params])
+    y = tf.placeholder(tf.float32, shape=[None, num_output_params])
+
+    prev_layer = X
+    for layer_size in layer_sizes:
+        layer = tf.contrib.layers.fully_connected(prev_layer, layer_size)
+        prev_layer = layer
+    hypothesis = tf.contrib.layers.fully_connected(prev_layer, num_output_params)
+
+    # rmse
+    cost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(hypothesis, y))))
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
+
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+
+    for step in range(epochs):
+        opt = sess.run(optimizer, feed_dict={X: X_train, y: y_train})
+        if debug and step % 200 == 0:
+            print("========== step ", step)
+            print("train cost: ", sess.run(cost, feed_dict={X: X_train, y: y_train}))
+            print("test cost: ", sess.run(cost, feed_dict={X: X_test, y: y_test}))
+    return sess.run(cost, feed_dict={X: X_test, y: y_test})
 
 def multi_run(prms_dic, debug=False):
     # create data samples
@@ -44,6 +73,8 @@ def multi_run(prms_dic, debug=False):
             for i3, model in enumerate(prms_dic["models"]):
                 X_train, X_test, y_train, y_test = train_test_split(train_all, label_all, test_size=0.2)
     #             print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
+                if model == "nn":
+                    score = nn_run(prms_dic["fc_nn_sizes"], X_test, X_test, y_train, y_test, debug=debug)
                 _, score = regressor(model, X_train, y_train, X_test, y_test, debug=debug)
                 print(score.mean())
 #                 prms_dic["score_df"][i1, i2, i3] = score
