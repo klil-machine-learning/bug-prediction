@@ -198,11 +198,14 @@ while(cap.isOpened()):
         # out_frame[out_frame > 170] = 0
         # out_frame[out_frame != 0] = 255
         y, x = np.nonzero(out_frame)
-        x_mean = np.mean(x)
-        y_mean = np.mean(y)
-        mask[:] = 0
-        cv2.circle(mask, (int(x_mean), int(y_mean)), 45, 255, thickness=-1)
-        out_frame[mask == 0] = 0
+        if len(x) == 0:
+            print("frame: {} no bug found".format(count))
+        else:
+            x_mean = np.mean(x)
+            y_mean = np.mean(y)
+            mask[:] = 0
+            cv2.circle(mask, (int(x_mean), int(y_mean)), 45, 255, thickness=-1)
+            out_frame[mask == 0] = 0
 
         # AND our implementation and udacity result to get best of both
         out_frame = np.bitwise_and(out_frame,img)
