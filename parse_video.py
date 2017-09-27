@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-import time
+# import time
 
 def myPCA(img):
     y, x = np.nonzero(img)
@@ -108,6 +108,9 @@ def diff_gray(image, prev_image):
     result[result != 255] = 0
     return result
 
+def PolyArea(x,y):
+    return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
+
 def extract_abc(box):
     C = np.mean(box, axis=0)
     point1 = box[0]
@@ -120,6 +123,9 @@ def extract_abc(box):
             closest_index = i
 
     point2 = box[closest_index]
+    # width = np.linalg.norm(point1-point2)
+    # point3 = point1
+    # height = np.linalg.norm()
     A = np.mean([point1, point2], axis=0)
 
     box = np.delete(box, (closest_index), axis=0)
@@ -147,7 +153,7 @@ mask = np.zeros((480,852))
 # empty[mask == 0] = (0, 0, 0)
 # empty_gray[mask == 0] = 0
 
-base_filename = "330 minute 1"
+base_filename = "330 minute 3"
 cap = cv2.VideoCapture("videos/"+base_filename+".mp4")
 
 detector = cv2.SimpleBlobDetector_create()
@@ -175,7 +181,7 @@ prev_B = [0, 0]
 ret, frame = cap.read()
 count += 1
 prev_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
+# prev_box = np.ones((4, 2))
 while(cap.isOpened()):
     if playVideo or step:
         step = False
@@ -219,15 +225,20 @@ while(cap.isOpened()):
         coords = np.vstack([x, y])
         try:
             nonZero = cv2.findNonZero(out_frame)
-
             hull = cv2.convexHull(nonZero)
-
             rect = cv2.minAreaRect(hull)
             box = cv2.boxPoints(rect)
             box = np.int0(box)
+            box_area = PolyArea(box[:,0], box[:,1])
+            if (((box_area < 1200) or (box_area > 2500))):
+                box = prev_box
+            else:
+                prev_box = box
+        except NameError:
+            # print("name error")
+            prev_box = box
         except:
             print("error in frame {}".format(count))
-
         if debug:
             cv2.drawContours(frame, [box], 0, 255, 2)
 
@@ -236,7 +247,7 @@ while(cap.isOpened()):
             params.append(point[0])
             params.append(point[1])
 
-        A,B,C = extract_abc(box)
+        B,A,C = extract_abc(box)
 
         distance_A = np.linalg.norm(A - prev_A)
         distance_B = np.linalg.norm(A - prev_B)
