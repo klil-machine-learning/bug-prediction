@@ -21,6 +21,36 @@ def regressor(model, X, y, X_test, y_test, debug=True):
     return model, test_score
 
 
+def multi_run(prms_dic, debug=False):
+    # create data samples
+    prms_dic["rmse_results"] = np.zeros((len(prms_dic["n_trains"]), 
+                                         len(prms_dic["n_labels"]), 
+                                         len(prms_dic["models"])))
+#     prms_dic["score_df"] =  np.zeros((len(prms_dic["n_trains"]), 
+#                                          len(prms_dic["n_labels"]), 
+#                                          len(prms_dic["models"])))
+    for i1, n_train in enumerate(prms_dic["n_trains"]):
+        for i2, n_label in enumerate(prms_dic["n_labels"]):
+            if prms_dic["data_sampler"] == "random":
+                train_all, label_all = bug.split_all_videos_random(5000, n_train, n_label, 
+                                                                   prms_dic["train_features"], 
+                                                                   prms_dic["label_features"], 
+                                                                   debug=debug)
+            if prms_dic["data_sampler"] == "ordered":
+                train_all, label_all = bug.split_all_videos(n_train, n_label, 
+                                                            prms_dic["train_features"], 
+                                                            prms_dic["label_features"], 
+                                                            debug=debug)
+            for i3, model in enumerate(prms_dic["models"]):
+                X_train, X_test, y_train, y_test = train_test_split(train_all, label_all, test_size=0.2)
+    #             print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
+                _, score = regressor(model, X_train, y_train, X_test, y_test, debug=debug)
+                print(score.mean())
+#                 prms_dic["score_df"][i1, i2, i3] = score
+                prms_dic["rmse_results"][i1, i2, i3] = score.mean()
+    return prms_dic
+    
+
 def show_video_trajectory(video_file):
     df = pd.read_csv("features/" + video_file)
     df = df.set_index('frame number')
