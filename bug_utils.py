@@ -75,8 +75,9 @@ def multi_run(prms_dic, debug=False):
                 X_train, X_test, y_train, y_test = train_test_split(train_all, label_all, test_size=0.2)
     #             print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
                 if model == "nn":
-                    score = nn_run(prms_dic["fc_nn_sizes"], X_test, X_test, y_train, y_test, debug=debug)
-                _, score = regressor(model, X_train, y_train, X_test, y_test, debug=debug)
+                    score = nn_run(prms_dic["fc_nn_sizes"], X_train, X_test, y_train, y_test, debug=debug)
+                else:
+                    _, score = regressor(model, X_train, y_train, X_test, y_test, debug=debug)
                 # summarize results
                 print("score: {}, model: {}, n_samples: {}, n_train: {}, n_label: {}".format(
                     score.mean(), type(model).__name__, prms_dic["n_samples"], n_train, n_label))
