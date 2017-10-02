@@ -49,7 +49,7 @@ def nn_run(layer_sizes, X_train, X_test, y_train, y_test, epochs=1500, debug=Fal
             print("========== step ", step)
             print("train cost: ", sess.run(cost, feed_dict={X: X_train, y: y_train}))
             print("test cost: ", sess.run(cost, feed_dict={X: X_test, y: y_test}))
-    return sess.run(cost, feed_dict={X: X_test, y: y_test})
+    return sess.run(cost, feed_dict={X: X_test, y: y_test}), sess, X, hypothesis
 
 def multi_run(prms_dic, debug=False):
     prms_dic["rmse_results"] = np.zeros((len(prms_dic["n_trains"]), 
@@ -135,16 +135,18 @@ def show_sample(train, label, ind=0):
     plt.gca().add_patch(plt.Circle((433,236),72,color='k', fill=False))
     plt.show()
 
+def reshape_np_for_show(np_array):
+    reshaped = (np_array.reshape(int(np_array.shape[1]/2), 2))
+    return reshaped.T
+
+def reshape_df_for_show(dataframe, idx = 0):
+    xs = dataframe.iloc[idx].loc[:, 'C_x'].values
+    ys = dataframe.iloc[idx].loc[:, 'C_y'].values
+    return np.array([xs, ys])
 
 def show_pred(train, label, preds, ind=0):
     fig, ax = plt.subplots(figsize=(7,5))
-    train_xs = train.iloc[ind].loc[:, 'C_x'].values
-    train_ys = train.iloc[ind].loc[:, 'C_y'].values
-    label_xs = label.iloc[ind].loc[:, 'C_x'].values
-    label_ys = label.iloc[ind].loc[:, 'C_y'].values
-    preds_xs = preds.iloc[ind].loc[:, 'C_x'].values
-    preds_ys = preds.iloc[ind].loc[:, 'C_y'].values
-    ax.plot(train_xs, train_ys, 'b.', label_xs, label_ys, 'go', preds_xs, preds_ys, 'ro')
+    ax.plot(train[0], train[1], 'b.', label[0], label[1], 'go', preds[0], preds[1], 'ro')
     plt.gca().plot()
     # plot surrounding box
     plt.gca().plot([125, 728, 728, 125, 125],[16, 16, 452, 452, 16], 'k-')
